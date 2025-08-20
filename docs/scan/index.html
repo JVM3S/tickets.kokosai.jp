@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <meta charset="UTF-8">
+    <title>チケット受付</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <script type="module">
+        import { BrowserMultiFormatReader } from "https://cdn.jsdelivr.net/npm/@zxing/browser@latest/+esm";
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
+        import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+
+        // Firebase config
+        const firebaseConfig = {
+            apiKey: "AIzaSyBqWz16jm09OaaJ8JbkZIoeYsaS8C7WDl4",
+            authDomain: "tickets-kokosai.firebaseapp.com",
+            projectId: "tickets-kokosai",
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const db = getFirestore(app);
+
+        async function checkTicket(ticketId) {
+            const ticketRef = doc(db, "ticketQR", ticketId);
+            const ticketSnap = await getDoc(ticketRef);
+
+            if (ticketSnap.exists()) {
+                const data = ticketSnap.data();
+                document.getElementById("result").innerText =
+                    `🎬 ${data.name}\n🕒 ${data.time}`;
+                document.getElementById("result").style.background = "#d4edda";
+            } else {
+                document.getElementById("result").innerText = "チケットが存在しません";
+                document.getElementById("result").style.background = "#f8d7da";
+            }
+        }
+
+        // Start PDF417 scanner
+        window.startScanner = async function () {
+            const codeReader = new BrowserMultiFormatReader();
+            const videoElement = document.getElementById("preview");
+
+            try {
+                const controls = await codeReader.decodeFromVideoDevice(
+                    null,
+                    videoElement,
+                    (result, err) => {
+                        if (result) {
+                            controls.stop(); // stop scanning after first match
+                            document.getElementById("result").innerText = result.getText().trim();
+                            checkTicket(result.getText().trim());
+                        }
+                    }
+                );
+            } catch (err) {
+                document.getElementById("result").innerText = "Camera error: " + err;
+            }
+        };
+    </script>
+    <style>
+        body {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        #preview {
+            width: 300px;
+            margin-top: 20px;
+            border: 1px solid #ccc;
+        }
+
+        #result {
+            margin-top: 20px;
+            padding: 15px;
+            font-size: 1.5rem;
+            border-radius: 8px;
+            white-space: pre-line;
+        }
+
+        button {
+            margin-top: 20px;
+            padding: 10px 20px;
+            font-size: 1.2rem;
+        }
+    </style>
+</head>
+
+<body>
+    <h1>チケット受付</h1>
+    <button onclick="startScanner()">scan</button>
+    <video id="preview"></video>
+    <div id="result">Waiting...</div>
+</body>
+
+</html>
