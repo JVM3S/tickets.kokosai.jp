@@ -8,34 +8,53 @@
     <script type="module">
         import { BrowserMultiFormatReader } from "https://cdn.jsdelivr.net/npm/@zxing/browser@latest/+esm";
         import { initializeApp } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-app.js";
-        import { getFirestore, doc, getDoc } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+        import { getFirestore, collection, getDocs } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-firestore.js";
+        import { getDatabase, ref, runTransaction } from "https://www.gstatic.com/firebasejs/11.0.1/firebase-database.js";
 
-        // Firebase config
         const firebaseConfig = {
             apiKey: "AIzaSyBqWz16jm09OaaJ8JbkZIoeYsaS8C7WDl4",
             authDomain: "tickets-kokosai.firebaseapp.com",
             projectId: "tickets-kokosai",
+            databaseURL: "https://tickets-kokosai-default-rtdb.asia-southeast1.firebasedatabase.app"
         };
 
         const app = initializeApp(firebaseConfig);
         const db = getFirestore(app);
+        const rtdb = getDatabase(app);
 
-        async function checkTicket(ticketId) {
-            const ticketRef = doc(db, "ticketQR", ticketId);
-            const ticketSnap = await getDoc(ticketRef);
+        let ticketCache = {};
 
-            if (ticketSnap.exists()) {
-                const data = ticketSnap.data();
+        async function loadTickets() {
+            document.getElementById("result").innerText = "Loading tickets...";
+            try {
+                const querySnapshot = await getDocs(collection(db, "ticketQR"));
+                querySnapshot.forEach(docSnap => {
+                    ticketCache[docSnap.id] = docSnap.data();
+                });
+                document.getElementById("result").innerText = "チケット読み込み完了！スキャンできます";
+            } catch (err) {
+                document.getElementById("result").innerText = "チケットの読み込みに失敗しました: " + err;
+            }
+        }
+
+        function checkTicket(ticketId) {
+            const data = ticketCache[ticketId];
+            if (data) {
                 document.getElementById("result").innerText =
-                    `🎬 ${data.name}\n🕒 ${data.time}`;
+                    `受付完了！\nクラス：${data.classNo}\n予約：${data.type}`;
                 document.getElementById("result").style.background = "#d4edda";
+
+                // 🔥 Increment the count for this type inside classNo
+                const typeRef = ref(rtdb, `${data.classNo}/${data.type}`);
+                runTransaction(typeRef, (currentValue) => {
+                    return (currentValue || 0) + 1;
+                });
             } else {
                 document.getElementById("result").innerText = "チケットが存在しません";
                 document.getElementById("result").style.background = "#f8d7da";
             }
         }
 
-        // Start PDF417 scanner
         window.startScanner = async function () {
             const codeReader = new BrowserMultiFormatReader();
             const videoElement = document.getElementById("preview");
@@ -46,9 +65,10 @@
                     videoElement,
                     (result, err) => {
                         if (result) {
-                            controls.stop(); // stop scanning after first match
-                            document.getElementById("result").innerText = result.getText().trim();
-                            checkTicket(result.getText().trim());
+                            controls.stop();
+                            const ticketId = result.getText().trim();
+                            document.getElementById("result").innerText = ticketId;
+                            checkTicket(ticketId);
                         }
                     }
                 );
@@ -56,7 +76,10 @@
                 document.getElementById("result").innerText = "Camera error: " + err;
             }
         };
+
+        window.addEventListener("DOMContentLoaded", loadTickets);
     </script>
+
     <style>
         body {
             display: flex;
