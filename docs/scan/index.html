@@ -23,57 +23,112 @@
         const rtdb = getDatabase(app);
 
         let ticketCache = {};
+        let codeReader;
+        let scanningActive = false;
+        let controls;
 
         async function loadTickets() {
-            document.getElementById("result").innerText = "Loading tickets...";
+            document.getElementById("result").innerText = "しばらくお待ちください...";
             try {
                 const querySnapshot = await getDocs(collection(db, "ticketQR"));
                 querySnapshot.forEach(docSnap => {
                     ticketCache[docSnap.id] = docSnap.data();
                 });
-                document.getElementById("result").innerText = "チケット読み込み完了！スキャンできます";
+                document.getElementById("result").innerText = "読み取りを開始してください。";
             } catch (err) {
-                document.getElementById("result").innerText = "チケットの読み込みに失敗しました: " + err;
+                document.getElementById("result").innerText = "チケットの読み込みに失敗しました:\n" + err;
+            }
+        }
+
+        function updateVideoBorder(status) {
+            const video = document.getElementById("preview");
+            switch (status) {
+                case "ready":
+                    video.style.border = "5px solid lime"; // bright green
+                    break;
+                case "error":
+                    video.style.border = "5px solid red"; // bright red
+                    break;
+                case "paused":
+                default:
+                    video.style.border = "none"; // no border
+                    break;
             }
         }
 
         function checkTicket(ticketId) {
             const data = ticketCache[ticketId];
-            if (data) {
-                document.getElementById("result").innerText =
-                    `受付完了！\nクラス：${data.classNo}\n予約：${data.type}`;
-                document.getElementById("result").style.background = "#d4edda";
+            const resultDiv = document.getElementById("result");
 
-                // 🔥 Increment the count for this type inside classNo
+            if (data) {
+                resultDiv.innerText = `受付完了！\nクラス：${data.classNo}\n予約：${data.type}`;
+                resultDiv.style.background = "#d4edda"; // success
+                updateVideoBorder("paused"); // no border after successful scan
+
                 const typeRef = ref(rtdb, `${data.classNo}/${data.type}`);
                 runTransaction(typeRef, (currentValue) => {
                     return (currentValue || 0) + 1;
                 });
             } else {
-                document.getElementById("result").innerText = "チケットが存在しません";
-                document.getElementById("result").style.background = "#f8d7da";
+                resultDiv.innerText = "チケットが存在しません";
+                resultDiv.style.background = "#f8d7da"; // error
+                updateVideoBorder("error"); // bright red for invalid ticket
             }
         }
 
         window.startScanner = async function () {
-            const codeReader = new BrowserMultiFormatReader();
+            const scanButton = document.getElementById("scanButton");
             const videoElement = document.getElementById("preview");
 
+            // Change button text after first click
+            if (scanButton.innerText !== "scan next") {
+                scanButton.innerText = "scan next";
+            }
+
+            // Clear previous result and set ready state
+            if (scanButton.innerText === "scan next") {
+                document.getElementById("result").innerText = "";
+                scanningActive = true;
+                updateVideoBorder("ready"); // bright green
+            }
+
+            if (!codeReader) {
+                codeReader = new BrowserMultiFormatReader();
+            }
+
             try {
-                const controls = await codeReader.decodeFromVideoDevice(
-                    null,
-                    videoElement,
-                    (result, err) => {
-                        if (result) {
-                            controls.stop();
-                            const ticketId = result.getText().trim();
-                            document.getElementById("result").innerText = ticketId;
-                            checkTicket(ticketId);
+                // Start camera if not already running
+                if (!controls) {
+                    controls = await codeReader.decodeFromVideoDevice(
+                        null,
+                        videoElement,
+                        (result, err) => {
+                            if (result && scanningActive) {
+                                scanningActive = false;
+                                const ticketId = result.getText().trim();
+                                checkTicket(ticketId); // only update border here
+                            }
+                            // ignore intermediate decode errors
                         }
-                    }
-                );
+                    );
+                } else {
+                    // Resume scanning if camera running
+                    scanningActive = true;
+                    updateVideoBorder("ready"); // bright green
+                }
             } catch (err) {
                 document.getElementById("result").innerText = "Camera error: " + err;
+                updateVideoBorder("error"); // bright red
+            }
+        };
+
+        window.stopCamera = function () {
+            if (controls) {
+                controls.stop();
+                controls = null;
+                scanningActive = false;
+                document.getElementById("result").innerText = "カメラを停止しました。";
+                updateVideoBorder("paused"); // no border
             }
         };
 
@@ -90,7 +145,8 @@
         #preview {
             width: 300px;
             margin-top: 20px;
-            border: 1px solid #ccc;
+            border: none;
+            transition: border 0.3s;
         }
 
         #result {
@@ -107,13 +163,15 @@
             font-size: 1.2rem;
         }
     </style>
+
 </head>
 
 <body>
     <h1>チケット受付</h1>
-    <button onclick="startScanner()">scan</button>
+    <button onclick="stopCamera()">stop camera</button>
     <video id="preview"></video>
     <div id="result">Waiting...</div>
+    <button id="scanButton" onclick="startScanner()">scan</button>
 </body>
 
 </html>
