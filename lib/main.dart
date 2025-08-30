@@ -489,169 +489,123 @@ class _TicketPageState extends State<TicketPage> {
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       backgroundColor: const Color(0xFFE0F4FF),
-      body: NotificationListener<ScrollNotification>(
-        onNotification: (ScrollNotification notification) {
-          scrollOffsetNotifier.value = notification.metrics.pixels;
-          return false;
-        },
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              // 作品一覧のヘッダー
-              ValueListenableBuilder<double>(
-                valueListenable: scrollOffsetNotifier,
-                builder: (context, offset, child) {
-                  final isTitleVisible = offset < 100;
-                  return AnimatedOpacity(
-                    opacity: isTitleVisible ? 1.0 : 0.0,
-                    duration: const Duration(milliseconds: 800),
-                    child: Padding(
-                      padding: const EdgeInsets.all(20.0),
-                      child: Text(
-                        '上演作品一覧',
-                        style: TextStyle(
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.black.withOpacity(0.7),
-                        ),
-                      ),
-                    ),
-                  );
-                },
+      body: SingleChildScrollView(
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(20.0),
+              child: Text(
+                '上演作品一覧',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black.withOpacity(0.7),
+                ),
               ),
-              // 作品カードを時間帯ごとにグループ化して表示
-              ...grouped.entries.map((entry) {
-                final timeSlot = entry.key;
-                final performancesInSlot = entry.value;
+            ),
+            ...grouped.entries.map((entry) {
+              final timeSlot = entry.key;
+              final performancesInSlot = entry.value;
 
-                return Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Padding(
-                      padding: const EdgeInsets.only(
-                        left: 20.0,
-                        right: 20.0,
-                        top: 20.0,
-                        bottom: 10.0,
-                      ),
-                      child: Text(
-                        '開催時間帯：$timeSlot',
-                        style: const TextStyle(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Color(0xFF6B8FD4),
-                        ),
+              return Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.only(
+                      left: 20.0,
+                      right: 20.0,
+                      top: 20.0,
+                      bottom: 10.0,
+                    ),
+                    child: Text(
+                      '開催時間帯：$timeSlot',
+                      style: const TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFF6B8FD4),
                       ),
                     ),
-                    ...performancesInSlot.map((performance) {
-                      // 選択済みかどうかの判定をマップを使って変更
-                      final isSelected =
-                          _selectedPerformances[timeSlot] == performance.title;
-                      return ValueListenableBuilder<double>(
-                        valueListenable: scrollOffsetNotifier,
-                        builder: (context, offset, child) {
-                          final cardIndex = _allPerformances.indexOf(
-                            performance,
-                          );
-                          final isCardVisible =
-                              offset > (cardIndex * 200) - screenHeight * 0.7;
-                          return _AnimatedCardItem(
-                            isVisible: isCardVisible,
-                            child: _PerformanceCard(
-                              performance: performance,
-                              isSelected: isSelected,
-                              onSelected:
-                                  () => _handleSelection(
-                                    performance.title,
-                                    timeSlot,
-                                  ),
-                            ),
-                          );
-                        },
-                      );
-                    }).toList(),
-                  ],
-                );
-              }),
-              const SizedBox(height: 50),
-              // 決定ボタン
-              ValueListenableBuilder<double>(
-                valueListenable: scrollOffsetNotifier,
-                builder: (context, offset, child) {
-                  final isConfirmButtonVisible =
-                      offset > MediaQuery.of(context).size.height * 0.5;
-                  return AnimatedOpacity(
-                    opacity: isConfirmButtonVisible ? 1.0 : 0.0,
-                    duration: const Duration(milliseconds: 800),
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 20.0),
-                      child: ElevatedButton(
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF6B8FD4),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(15.0),
-                          ),
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 50,
-                            vertical: 15,
-                          ),
-                        ),
-                        // 選択数が0より大きい場合にボタンを有効化
-                        onPressed:
-                            _selectedPerformances.isNotEmpty
-                                ? () {
-                                  // 確認ページに遷移
-                                  Navigator.push(
-                                    context,
-                                    PageRouteBuilder(
-                                      pageBuilder:
-                                          (
-                                            context,
-                                            animation,
-                                            secondaryAnimation,
-                                          ) => _ConfirmationPage(
-                                            selectedPerformances:
-                                                _selectedPerformances.values
-                                                    .toList(),
-                                          ),
-                                      transitionsBuilder: (
-                                        context,
-                                        animation,
-                                        secondaryAnimation,
-                                        child,
-                                      ) {
-                                        const begin = Offset(1.0, 0.0);
-                                        const end = Offset.zero;
-                                        const curve = Curves.ease;
-
-                                        final tween = Tween(
-                                          begin: begin,
-                                          end: end,
-                                        ).chain(CurveTween(curve: curve));
-
-                                        return SlideTransition(
-                                          position: animation.drive(tween),
-                                          child: child,
-                                        );
-                                      },
-                                      transitionDuration: const Duration(
-                                        milliseconds: 400,
-                                      ),
-                                    ),
-                                  );
-                                }
-                                : null, // 選択がない場合はボタンを無効化
-                        child: const Text(
-                          '選択を確定する',
-                          style: TextStyle(color: Colors.white, fontSize: 18),
-                        ),
-                      ),
-                    ),
-                  );
-                },
+                  ),
+                  ...performancesInSlot.map((performance) {
+                    // 選択済みかどうかの判定をマップを使って変更
+                    final isSelected =
+                        _selectedPerformances[timeSlot] == performance.title;
+                    return _PerformanceCard(
+                      performance: performance,
+                      isSelected: isSelected,
+                      onSelected:
+                          () => _handleSelection(performance.title, timeSlot),
+                    );
+                  }).toList(),
+                ],
+              );
+            }),
+            const SizedBox(height: 100),
+          ],
+        ),
+      ),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: AnimatedOpacity(
+        opacity: _selectedPerformances.isNotEmpty ? 1.0 : 0.0,
+        duration: const Duration(milliseconds: 300),
+        child: IgnorePointer(
+          ignoring: _selectedPerformances.isEmpty,
+          child: ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color.fromARGB(
+                255,
+                213,
+                228,
+                255,
+              ).withOpacity(0.9),
+              shape: RoundedRectangleBorder(
+                side: BorderSide(color: Colors.blue),
+                borderRadius: BorderRadius.circular(15.0),
               ),
-              const SizedBox(height: 50),
-            ],
+              padding: const EdgeInsets.symmetric(horizontal: 50, vertical: 15),
+            ),
+            onPressed: () {
+              // 確認ページに遷移
+              Navigator.push(
+                context,
+                PageRouteBuilder(
+                  pageBuilder:
+                      (context, animation, secondaryAnimation) =>
+                          _ConfirmationPage(
+                            selectedPerformances:
+                                _selectedPerformances.values.toList(),
+                          ),
+                  transitionsBuilder: (
+                    context,
+                    animation,
+                    secondaryAnimation,
+                    child,
+                  ) {
+                    const begin = Offset(1.0, 0.0);
+                    const end = Offset.zero;
+                    const curve = Curves.ease;
+                    final tween = Tween(
+                      begin: begin,
+                      end: end,
+                    ).chain(CurveTween(curve: curve));
+                    return SlideTransition(
+                      position: animation.drive(tween),
+                      child: child,
+                    );
+                  },
+                  transitionDuration: const Duration(milliseconds: 400),
+                ),
+              );
+            },
+            child: const Text(
+              '選択を確定する',
+              style: TextStyle(
+                color: Color.fromARGB(255, 0, 0, 0),
+                fontSize: 18,
+                fontWeight: FontWeight.w100,
+              ),
+            ),
           ),
         ),
       ),
@@ -837,6 +791,14 @@ class EmailInputPage extends StatelessWidget {
                   ),
                   SizedBox(height: 10),
                   Text(
+                    'まだ予約は完了していません',
+                    style: TextStyle(
+                      fontSize: 20,
+                      color: Color.fromARGB(221, 255, 2, 2),
+                    ),
+                  ),
+                  SizedBox(height: 5),
+                  Text(
                     '・ご入力いただいたメールアドレスに抽選結果をお知らせします。',
                     style: TextStyle(fontSize: 14, color: Colors.black87),
                   ),
@@ -916,7 +878,6 @@ class EmailInputPage extends StatelessWidget {
                       },
                     });
                     // 予約完了を通知
-
                     final snackBarText =
                         '$email宛に以下の演劇の予約内容を送信しました:\n${selectedPerformances.join('\n')}';
                     ScaffoldMessenger.of(context).showSnackBar(
