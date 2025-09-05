@@ -114,7 +114,7 @@ class MainPage extends StatefulWidget {
   const MainPage({super.key});
 
   @override
-  _MainPageState createState() => _MainPageState();
+  State<MainPage> createState() => _MainPageState();
 }
 
 class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
@@ -318,11 +318,11 @@ class _MainCard extends StatelessWidget {
       width: MediaQuery.of(context).size.width * 0.9,
       padding: const EdgeInsets.all(25),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.9),
+        color: Colors.white.withValues(alpha: 0.9),
         borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withValues(alpha: 0.1),
             offset: const Offset(5, 5),
             blurRadius: 15,
           ),
@@ -336,9 +336,9 @@ class _MainCard extends StatelessWidget {
             cardData.title,
             style: TextStyle(
               fontSize: 25,
-              fontFamily: FlutterVersion.version,
+              fontFamily: 'NotoSansJP',
               fontWeight: FontWeight.bold,
-              color: Colors.black.withOpacity(0.8),
+              color: Colors.black.withValues(alpha: 0.8),
             ),
           ),
           const SizedBox(height: 10),
@@ -365,7 +365,7 @@ class _MainCard extends StatelessWidget {
             cardData.body,
             style: TextStyle(
               fontSize: 16,
-              color: Colors.black.withOpacity(0.7),
+              color: Colors.black.withValues(alpha: 0.7),
             ),
           ),
           if (cardData.onButtonPressed != null) ...[
@@ -407,13 +407,13 @@ class TicketPage extends StatefulWidget {
   const TicketPage({super.key});
 
   @override
-  _TicketPageState createState() => _TicketPageState();
+  State<TicketPage> createState() => _TicketPageState();
 }
 
 class _TicketPageState extends State<TicketPage> {
   final ValueNotifier<double> scrollOffsetNotifier = ValueNotifier(0.0);
 
-  // 選択された作品を「時間帯」と「作品名」で管理するマップに変更
+  // 選択された作品を「時間帯」と「クラス名」で管理するマップに変更
   final Map<String, String> _selectedPerformances = {};
 
   // 予約ページ用の作品データ
@@ -426,7 +426,7 @@ class _TicketPageState extends State<TicketPage> {
       time: '9:30~11:00',
       prText:
           '時は春秋戦国時代。下僕の少年と若き王の出会いが、中華の未来を動かす__\n命を懸けた戦い、仲間との絆。｢KINGDOM｣ここに開幕！',
-      photoColor: const Color(0xFFD4B96B).withOpacity(0.8),
+      photoColor: const Color(0xFFD4B96B).withValues(alpha: 0.8),
       extension: ".jpeg",
     ),
     PerformanceData(
@@ -436,7 +436,7 @@ class _TicketPageState extends State<TicketPage> {
       date: '9月27日（土）',
       time: '9:30~11:00',
       prText: '「今日俺」待望の舞台化。ここ旭丘でもヤンキーたちが大暴れ！！！この夏、最大で最凶の闘いが今始まる！！！',
-      photoColor: const Color(0xFFD46B6B).withOpacity(0.8),
+      photoColor: const Color(0xFFD46B6B).withValues(alpha: 0.8),
       extension: ".png",
     ),
     PerformanceData(
@@ -447,7 +447,7 @@ class _TicketPageState extends State<TicketPage> {
       time: '9:30~11:00',
       prText:
           '秘密の力を持った姉エルサと運命の恋を夢見る妹アナの姉妹が織りなす、アレンデール王国を巡る魔法と感動の物語。\n「少しも寒くない」この夏、小体育館で魔法にかかろう！',
-      photoColor: const Color(0xFF6BD4D4).withOpacity(0.8),
+      photoColor: const Color(0xFF6BD4D4).withValues(alpha: 0.8),
       extension: ".png",
     ),
     PerformanceData(
@@ -457,7 +457,7 @@ class _TicketPageState extends State<TicketPage> {
       date: '9月27日（土）',
       time: '13:00~14:30',
       prText: '友情か使命か。全ての次元を越えた出逢いを繋ぐ、インド映画の最高峰。',
-      photoColor: const Color(0xFFC498D4).withOpacity(0.8),
+      photoColor: const Color(0xFFC498D4).withValues(alpha: 0.8),
       extension: ".png",
     ),
     PerformanceData(
@@ -467,7 +467,7 @@ class _TicketPageState extends State<TicketPage> {
       date: '9月27日（土）',
       time: '13:00~14:30',
       prText: '「いずれは王になるお方」魔女の予言が、心を惑わす。野望に憑かれた男の血と裏切りの運命。悲劇『マクベス』開演。',
-      photoColor: const Color(0xFF6B8FD4).withOpacity(0.8),
+      photoColor: const Color(0xFF6B8FD4).withValues(alpha: 0.8),
       extension: ".png",
     ),
     PerformanceData(
@@ -477,7 +477,7 @@ class _TicketPageState extends State<TicketPage> {
       date: '9月27日（土）',
       time: '13:00~14:30',
       prText: '名前を書かれた人間は死ぬ——。圧倒的な頭脳を持つ二人が繰り広げる、命を懸けた壮絶な心理戦。果たして、本当の“正義”とは何か？',
-      photoColor: const Color(0xFF90D490).withOpacity(0.8),
+      photoColor: const Color(0xFF90D490).withValues(alpha: 0.8),
       extension: ".png",
     ),
     PerformanceData(
@@ -487,7 +487,7 @@ class _TicketPageState extends State<TicketPage> {
       date: '9月28日（日）',
       time: '9:30~11:00',
       prText: '伝えたい想いがある。言葉にできない心の叫びが、静かに、けれど確かに響き合う、切なくも温かい青春の物語。',
-      photoColor: const Color(0xFF6B8FD4).withOpacity(0.8),
+      photoColor: const Color(0xFF6B8FD4).withValues(alpha: 0.8),
       extension: ".jpg",
     ),
     PerformanceData(
@@ -497,7 +497,7 @@ class _TicketPageState extends State<TicketPage> {
       date: '9月28日（日）',
       time: '9:30~11:00',
       prText: 'オペラ座に響く、届かぬ恋と運命の物語。仮面に隠した想いが、舞台で動き出す＿\n旭丘史上、最高の劇を見逃すな！',
-      photoColor: const Color(0xFF90D490).withOpacity(0.8),
+      photoColor: const Color(0xFF90D490).withValues(alpha: 0.8),
       extension: ".jpg",
     ),
     PerformanceData(
@@ -507,7 +507,7 @@ class _TicketPageState extends State<TicketPage> {
       date: '9月28日（日）',
       time: '9:30~11:00',
       prText: 'ミュージカルの魔法があなたを包む\n極上のエンターテイメント\nようこそLA LA LANDの世界へ！',
-      photoColor: const Color(0xFFD46BB9).withOpacity(0.8),
+      photoColor: const Color(0xFFD46BB9).withValues(alpha: 0.8),
       extension: ".JPG",
     ),
   ];
@@ -515,7 +515,7 @@ class _TicketPageState extends State<TicketPage> {
   // 時間帯ごとに作品をグループ化し、時系列でソートする
   Map<String, List<PerformanceData>> get _groupedAndSortedPerformances {
     // 日付と時間を表す文字列からDateTimeオブジェクトを作成
-    int _getDateTimeSortKey(PerformanceData p) {
+    int getDateTimeSortKey(PerformanceData p) {
       final date = p.date.contains('土') ? '27' : '28';
       final timeParts = p.time.split('~')[0].split(':').map(int.parse).toList();
       return int.parse(
@@ -524,7 +524,7 @@ class _TicketPageState extends State<TicketPage> {
     }
 
     _allPerformances.sort((a, b) {
-      return _getDateTimeSortKey(a).compareTo(_getDateTimeSortKey(b));
+      return getDateTimeSortKey(a).compareTo(getDateTimeSortKey(b));
     });
 
     final Map<String, List<PerformanceData>> groups = {};
@@ -538,21 +538,21 @@ class _TicketPageState extends State<TicketPage> {
     return groups;
   }
 
-  void _handleSelection(String title, String timeSlot) {
+  void _handleSelection(String classNo, String timeSlot) {
     setState(() {
       // 同じ時間帯で既に選択されている作品があるか確認
       if (_selectedPerformances.containsKey(timeSlot)) {
         // 同じ作品を再度選択した場合、選択を解除
-        if (_selectedPerformances[timeSlot] == title) {
+        if (_selectedPerformances[timeSlot] == classNo) {
           _selectedPerformances.remove(timeSlot);
         } else {
           // 違う作品を選択した場合、上書きする
-          _selectedPerformances[timeSlot] = title;
+          _selectedPerformances[timeSlot] = classNo;
         }
       } else {
         // 選択数が3つ未満か確認
         if (_selectedPerformances.length < 3) {
-          _selectedPerformances[timeSlot] = title;
+          _selectedPerformances[timeSlot] = classNo;
         } else {
           // 3つ以上選択できないことをユーザーに通知
           ScaffoldMessenger.of(context).showSnackBar(
@@ -589,7 +589,7 @@ class _TicketPageState extends State<TicketPage> {
                   style: TextStyle(
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
-                    color: Colors.black.withOpacity(0.7),
+                    color: Colors.black.withValues(alpha: 0.7),
                   ),
                 ),
               ),
@@ -624,9 +624,12 @@ class _TicketPageState extends State<TicketPage> {
                         performance: performance,
                         isSelected: isSelected,
                         onSelected:
-                            () => _handleSelection(performance.title, timeSlot),
+                            () => _handleSelection(
+                              performance.classnumber,
+                              timeSlot,
+                            ),
                       );
-                    }).toList(),
+                    }),
                   ],
                 );
               }),
@@ -648,7 +651,7 @@ class _TicketPageState extends State<TicketPage> {
                 213,
                 228,
                 255,
-              ).withOpacity(0.9),
+              ).withValues(alpha: 0.9),
               shape: RoundedRectangleBorder(
                 side: BorderSide(color: Colors.blue),
                 borderRadius: BorderRadius.circular(15.0),
@@ -735,7 +738,7 @@ class _ConfirmationPage extends StatelessWidget {
             const SizedBox(height: 20),
             // 選択された作品を一覧で表示
             ...selectedPerformances.map(
-              (title) => Padding(
+              (classNo) => Padding(
                 padding: const EdgeInsets.symmetric(vertical: 8.0),
                 child: Row(
                   children: [
@@ -746,10 +749,10 @@ class _ConfirmationPage extends StatelessWidget {
                     const SizedBox(width: 10),
                     Expanded(
                       child: Text(
-                        title,
+                        classNo,
                         style: TextStyle(
                           fontSize: 18,
-                          color: Colors.black.withOpacity(0.8),
+                          color: Colors.black.withValues(alpha: 0.8),
                         ),
                       ),
                     ),
@@ -899,7 +902,6 @@ class EmailInputPage extends StatelessWidget {
                     SizedBox(height: 5),
                     Text(
                       '・迷惑メール設定をされている方は、事前に「...」からのメールを受信できるように設定してください。',
-                      // TODO
                       style: TextStyle(fontSize: 14, color: Colors.black87),
                     ),
                     SizedBox(height: 5),
@@ -972,17 +974,12 @@ class EmailInputPage extends StatelessWidget {
                   onPressed: () async {
                     final email = _emailController.text;
                     if (email.isNotEmpty && email.contains('@')) {
-                      await FirebaseFirestore.instance
-                          .collection("ticketsMail")
-                          .add({
-                            "to": [email],
-                            "message": {
-                              "subject": "鯱光祭チケット抽選予約完了のお知らせ",
-                              "text":
-                                  "旭丘高校鯱光祭三年劇の抽選予約誠にありがとうございます。結果につきましては再度9/25に送信いたします。また、万が一抽選に外れましても、一部当日席がありますので、ぜひお越しください。",
-                            },
-                          });
+                      await addEmailToArray(
+                        email: email,
+                        classNos: selectedPerformances,
+                      );
                       // スナックバーの代わりに予約完了ページに遷移
+                      if (!context.mounted) return;
                       Navigator.pushAndRemoveUntil(
                         context,
                         MaterialPageRoute(
@@ -1024,6 +1021,46 @@ class EmailInputPage extends StatelessWidget {
   }
 }
 
+Future<void> addEmailToArray({
+  required List<String> classNos,
+  required String email,
+}) async {
+  final docRef = FirebaseFirestore.instance.doc("entries/data");
+
+  await FirebaseFirestore.instance.runTransaction((transaction) async {
+    final snapshot = await transaction.get(docRef);
+
+    // Read all arrays in the doc
+    final data = snapshot.data() as Map<String, dynamic>;
+    int totalOccurrences = 0;
+
+    for (int i = 1; i <= 9; i++) {
+      final key = "array$i";
+      final List<dynamic> list = (data[key] ?? []) as List<dynamic>;
+      totalOccurrences += list.where((e) => e == email).length;
+    }
+
+    // Check if already 3 or more
+    if (totalOccurrences < 3) {
+      for (var i in classNos) {
+        final List<dynamic> targetArray = (data[i] ?? []);
+        if (!targetArray.contains(email)) {
+          targetArray.add(email);
+        }
+        transaction.update(docRef, {i: targetArray});
+      }
+      await FirebaseFirestore.instance.collection("ticketsMail").add({
+        "to": [email],
+        "message": {
+          "subject": "鯱光祭チケット抽選予約完了のお知らせ",
+          "text":
+              "旭丘高校鯱光祭三年劇の抽選予約誠にありがとうございます。結果につきましては再度9/25に送信いたします。また、万が一抽選に外れましても、一部当日席がありますので、ぜひお越しください。",
+        },
+      });
+    }
+  });
+}
+
 // 作品情報を表示するカードウィジェット
 class _PerformanceCard extends StatelessWidget {
   final PerformanceData performance;
@@ -1047,12 +1084,12 @@ class _PerformanceCard extends StatelessWidget {
           decoration: BoxDecoration(
             color:
                 isSelected
-                    ? const Color(0xFF6B8FD4).withOpacity(0.2)
-                    : Colors.white.withOpacity(0.9),
+                    ? const Color(0xFF6B8FD4).withValues(alpha: 0.2)
+                    : Colors.white.withValues(alpha: 0.9),
             borderRadius: BorderRadius.circular(20), // 外側のコンテナの角丸
             boxShadow: [
               BoxShadow(
-                color: Colors.black.withOpacity(0.1),
+                color: Colors.black.withValues(alpha: 0.1),
                 offset: const Offset(5, 5),
                 blurRadius: 15,
               ),
@@ -1095,7 +1132,7 @@ class _PerformanceCard extends StatelessWidget {
                       style: TextStyle(
                         fontSize: 24,
                         fontWeight: FontWeight.bold,
-                        color: Colors.black.withOpacity(0.8),
+                        color: Colors.black.withValues(alpha: 0.8),
                       ),
                     ),
                     const SizedBox(height: 10),
@@ -1103,7 +1140,7 @@ class _PerformanceCard extends StatelessWidget {
                       'クラス: ${performance.classnumber}',
                       style: TextStyle(
                         fontSize: 16,
-                        color: Colors.black.withOpacity(0.6),
+                        color: Colors.black.withValues(alpha: 0.6),
                       ),
                     ),
                     const SizedBox(height: 5),
@@ -1111,7 +1148,7 @@ class _PerformanceCard extends StatelessWidget {
                       '上演場所: ${performance.venue}',
                       style: TextStyle(
                         fontSize: 16,
-                        color: Colors.black.withOpacity(0.6),
+                        color: Colors.black.withValues(alpha: 0.6),
                       ),
                     ),
                     const SizedBox(height: 5),
@@ -1119,7 +1156,7 @@ class _PerformanceCard extends StatelessWidget {
                       '上演時間: ${performance.time}',
                       style: TextStyle(
                         fontSize: 16,
-                        color: Colors.black.withOpacity(0.6),
+                        color: Colors.black.withValues(alpha: 0.6),
                       ),
                     ),
                     const SizedBox(height: 15),
@@ -1127,7 +1164,7 @@ class _PerformanceCard extends StatelessWidget {
                       performance.prText,
                       style: TextStyle(
                         fontSize: 14,
-                        color: Colors.black.withOpacity(0.7),
+                        color: Colors.black.withValues(alpha: 0.7),
                       ),
                     ),
                     const SizedBox(height: 20),
@@ -1162,7 +1199,7 @@ class _PerformanceCard extends StatelessWidget {
 
 // 予約完了ページ
 class _BookingCompletePage extends StatelessWidget {
-  const _BookingCompletePage({super.key});
+  const _BookingCompletePage();
 
   @override
   Widget build(BuildContext context) {
