@@ -1,9 +1,15 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:tickets_kokosai_jp/firebase_options.dart';
+import 'package:url_launcher/url_launcher.dart';
 
-void main() {
+void main() async {
+  // main関数を非同期に変更
   WidgetsFlutterBinding.ensureInitialized();
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   SystemChrome.setPreferredOrientations([
     DeviceOrientation.portraitUp,
     DeviceOrientation.portraitDown,
@@ -16,7 +22,22 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const MaterialApp(home: MainPage());
+    return MaterialApp(
+      home: MainPage(),
+      // ロケール設定
+      debugShowCheckedModeBanner: false,
+      supportedLocales: [Locale('ja', 'JP')],
+      localizationsDelegates: [
+        GlobalMaterialLocalizations.delegate,
+        GlobalWidgetsLocalizations.delegate,
+        GlobalCupertinoLocalizations.delegate,
+      ],
+      theme: ThemeData(
+        fontFamily: 'NotoSansJP', // ← pubspec.yamlで設定したフォント名を指定
+      ),
+      // アプリのロケールを明示的に指定
+      locale: Locale("ja", "JP"),
+    );
   }
 }
 
@@ -65,18 +86,102 @@ class PerformanceData {
   });
 }
 
-class MainPage extends StatelessWidget {
+class UrlLauncherUtil {
+  /// 指定されたURLを起動します。
+  /// 起動できない場合は、`SnackBar`でエラーメッセージを表示します。
+  static Future<void> launch({
+    required String url,
+    required BuildContext context,
+    LaunchMode mode = LaunchMode.platformDefault,
+  }) async {
+    final Uri uri = Uri.parse(url);
+    if (!await canLaunchUrl(uri)) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('URLを開けませんでした。'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+      return;
+    }
+    await launchUrl(uri, mode: mode);
+  }
+}
+
+class MainPage extends StatefulWidget {
   const MainPage({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final ValueNotifier<double> scrollOffsetNotifier = ValueNotifier(0.0);
+  _MainPageState createState() => _MainPageState();
+}
 
+class _MainPageState extends State<MainPage> with WidgetsBindingObserver {
+  final ScrollController _scrollController = ScrollController();
+  final ValueNotifier<double> scrollOffsetNotifier = ValueNotifier(0.0);
+  bool _shouldAnimateIn = false;
+
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    // 初期アニメーションをトリガー
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        setState(() {
+          _shouldAnimateIn = true;
+        });
+      }
+    });
+
+    _scrollController.addListener(() {
+      scrollOffsetNotifier.value = _scrollController.offset;
+    });
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  // ページの再表示を検知
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      // アプリがフォアグラウンドに戻ったときに実行
+      _resetStateAndScroll();
+    }
+  }
+
+  void _resetStateAndScroll() {
+    _scrollController.animateTo(
+      0.0,
+      duration: const Duration(milliseconds: 500),
+      curve: Curves.easeOut,
+    );
+    setState(() {
+      _shouldAnimateIn = false;
+    });
+    // アニメーションを再実行
+    Future.delayed(const Duration(milliseconds: 500), () {
+      if (mounted) {
+        setState(() {
+          _shouldAnimateIn = true;
+        });
+      }
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
     final List<CardData> cards = [
       CardData(
         title: '三年劇チケット予約について',
         body:
-            '一人につき３つまで予約可能です。ただし同時刻帯の劇は一つしか予約できません。また、メールアドレスの多使用による予約はご遠慮ください。',
+            '劇の予約は一人につき三本まで可能です。ただし同時刻帯の劇は一本しか予約できません。抽選結果は9/25にメールでお知らせします。また、メールアドレスの多使用による予約はご遠慮ください。',
         subText: '予約は抽選制です',
         subText2: '募集締め切り＆抽選は9/25です',
         buttonText: '予約フォームはこちら',
@@ -117,39 +222,13 @@ class MainPage extends StatelessWidget {
       ),
       CardData(
         title: 'お問い合わせ',
-        body: 'ご不明な点がありましたら、こちらのフォームでお問い合わせください。',
+        body: 'ご不明な点がありましたら、こちらのフォームでお問い合わせください。返信には多少時間がかかりますがご了承ください',
         buttonText: "お問い合わせフォームはこちら",
         icon: Icons.contact_mail,
         onButtonPressed: () {
-          // ボタンが押されたときの処理
-          Navigator.push(
-            context,
-            PageRouteBuilder(
-              pageBuilder:
-                  (context, animation, secondaryAnimation) =>
-                      const InquiryFormPage(),
-              transitionsBuilder: (
-                context,
-                animation,
-                secondaryAnimation,
-                child,
-              ) {
-                const begin = Offset(1.0, 0.0);
-                const end = Offset.zero;
-                const curve = Curves.ease;
-
-                final tween = Tween(
-                  begin: begin,
-                  end: end,
-                ).chain(CurveTween(curve: curve));
-
-                return SlideTransition(
-                  position: animation.drive(tween),
-                  child: child,
-                );
-              },
-              transitionDuration: const Duration(milliseconds: 400),
-            ),
+          UrlLauncherUtil.launch(
+            url: 'https://tickets.kokosai.jp/contact',
+            context: context,
           );
         },
       ),
@@ -157,71 +236,70 @@ class MainPage extends StatelessWidget {
 
     return Scaffold(
       backgroundColor: const Color(0xFFE0F4FF),
-      body: NotificationListener<ScrollNotification>(
-        onNotification: (ScrollNotification notification) {
-          scrollOffsetNotifier.value = notification.metrics.pixels;
-          return false;
-        },
-        child: SingleChildScrollView(
-          child: Column(
-            children: [
-              SizedBox(
-                height: MediaQuery.of(context).size.height,
-                child: ValueListenableBuilder<double>(
-                  valueListenable: scrollOffsetNotifier,
-                  builder: (context, offset, child) {
-                    final isInitialContentVisible = offset < 100;
-                    return _InitialContent(isVisible: isInitialContentVisible);
-                  },
-                ),
+      body: SingleChildScrollView(
+        controller: _scrollController,
+        child: Column(
+          children: [
+            SizedBox(
+              height: MediaQuery.of(context).size.height,
+              child: _InitialContent(isVisible: _shouldAnimateIn),
+            ),
+            ...List.generate(cards.length, (index) {
+              final cardData = cards[index];
+              final cardOffset =
+                  MediaQuery.of(context).size.height + (index * 200);
+              return ValueListenableBuilder<double>(
+                valueListenable: scrollOffsetNotifier,
+                builder: (context, offset, child) {
+                  final isCardVisible =
+                      offset >
+                      cardOffset - MediaQuery.of(context).size.height * 0.7;
+                  return _AnimatedCardItem(
+                    isVisible: isCardVisible,
+                    child: _MainCard(cardData: cardData),
+                  );
+                },
+              );
+            }),
+            const SizedBox(height: 50),
+            Padding(
+              padding: const EdgeInsets.symmetric(vertical: 20.0),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  TextButton(
+                    onPressed: () {
+                      UrlLauncherUtil.launch(
+                        url: 'https://tickets.kokosai.jp/privacy',
+                        context: context,
+                      );
+                    },
+                    child: const Text(
+                      'プライバシーポリシー',
+                      style: TextStyle(color: Color(0xFF6B8FD4)),
+                    ),
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 8.0),
+                    child: Text('|', style: TextStyle(color: Colors.grey)),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      UrlLauncherUtil.launch(
+                        url: 'https://tickets.kokosai.jp/disclaimer',
+                        context: context,
+                      );
+                    },
+                    child: const Text(
+                      '免責事項',
+                      style: TextStyle(color: Color(0xFF6B8FD4)),
+                    ),
+                  ),
+                ],
               ),
-              ...List.generate(cards.length, (index) {
-                final cardData = cards[index];
-                final cardOffset =
-                    MediaQuery.of(context).size.height + (index * 200);
-                return ValueListenableBuilder<double>(
-                  valueListenable: scrollOffsetNotifier,
-                  builder: (context, offset, child) {
-                    final isCardVisible =
-                        offset >
-                        cardOffset - MediaQuery.of(context).size.height * 0.7;
-                    return _AnimatedCardItem(
-                      isVisible: isCardVisible,
-                      child: _MainCard(cardData: cardData),
-                    );
-                  },
-                );
-              }),
-              const SizedBox(height: 50),
-              Padding(
-                padding: const EdgeInsets.symmetric(vertical: 20.0),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    TextButton(
-                      onPressed: () {},
-                      child: const Text(
-                        'プライバシーポリシー',
-                        style: TextStyle(color: Color(0xFF6B8FD4)),
-                      ),
-                    ),
-                    const Padding(
-                      padding: EdgeInsets.symmetric(horizontal: 8.0),
-                      child: Text('|', style: TextStyle(color: Colors.grey)),
-                    ),
-                    TextButton(
-                      onPressed: () {},
-                      child: const Text(
-                        '免責事項',
-                        style: TextStyle(color: Color(0xFF6B8FD4)),
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 50),
-            ],
-          ),
+            ),
+            const SizedBox(height: 50),
+          ],
         ),
       ),
     );
@@ -257,7 +335,8 @@ class _MainCard extends StatelessWidget {
           Text(
             cardData.title,
             style: TextStyle(
-              fontSize: 24,
+              fontSize: 25,
+              fontFamily: FlutterVersion.version,
               fontWeight: FontWeight.bold,
               color: Colors.black.withOpacity(0.8),
             ),
@@ -307,6 +386,17 @@ class _MainCard extends StatelessWidget {
               ),
             ),
           ],
+          SizedBox(height: 5),
+          if (cardData.title == '三年劇チケット予約について')
+            TextButton(
+              onPressed: () {
+                UrlLauncherUtil.launch(
+                  url: 'https://www.google.com',
+                  context: context,
+                );
+              },
+              child: Text("その他の予約に関する説明はこちらから"),
+            ),
         ],
       ),
     );
@@ -479,7 +569,6 @@ class _TicketPageState extends State<TicketPage> {
   @override
   Widget build(BuildContext context) {
     final grouped = _groupedAndSortedPerformances;
-    final double screenHeight = MediaQuery.of(context).size.height;
 
     return Scaffold(
       appBar: AppBar(
@@ -490,59 +579,60 @@ class _TicketPageState extends State<TicketPage> {
       ),
       backgroundColor: const Color(0xFFE0F4FF),
       body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(20.0),
-              child: Text(
-                '上演作品一覧',
-                style: TextStyle(
-                  fontSize: 24,
-                  fontWeight: FontWeight.bold,
-                  color: Colors.black.withOpacity(0.7),
+        child: Center(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.all(20.0),
+                child: Text(
+                  '上演作品一覧',
+                  style: TextStyle(
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black.withOpacity(0.7),
+                  ),
                 ),
               ),
-            ),
-            ...grouped.entries.map((entry) {
-              final timeSlot = entry.key;
-              final performancesInSlot = entry.value;
+              ...grouped.entries.map((entry) {
+                final timeSlot = entry.key;
+                final performancesInSlot = entry.value;
 
-              return Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.only(
-                      left: 20.0,
-                      right: 20.0,
-                      top: 20.0,
-                      bottom: 10.0,
-                    ),
-                    child: Text(
-                      '開催時間帯：$timeSlot',
-                      style: const TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                        color: Color(0xFF6B8FD4),
+                return Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Padding(
+                      padding: const EdgeInsets.only(
+                        left: 20.0,
+                        right: 20.0,
+                        top: 20.0,
+                        bottom: 10.0,
+                      ),
+                      child: Text(
+                        '開催時間帯：$timeSlot',
+                        style: const TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: Color(0xFF6B8FD4),
+                        ),
                       ),
                     ),
-                  ),
-                  ...performancesInSlot.map((performance) {
-                    // 選択済みかどうかの判定をマップを使って変更
-                    final isSelected =
-                        _selectedPerformances[timeSlot] == performance.title;
-                    return _PerformanceCard(
-                      performance: performance,
-                      isSelected: isSelected,
-                      onSelected:
-                          () => _handleSelection(performance.title, timeSlot),
-                    );
-                  }).toList(),
-                ],
-              );
-            }),
-            const SizedBox(height: 100),
-          ],
+                    ...performancesInSlot.map((performance) {
+                      // 選択済みかどうかの判定をマップを使って変更
+                      final isSelected =
+                          _selectedPerformances[timeSlot] == performance.title;
+                      return _PerformanceCard(
+                        performance: performance,
+                        isSelected: isSelected,
+                        onSelected:
+                            () => _handleSelection(performance.title, timeSlot),
+                      );
+                    }).toList(),
+                  ],
+                );
+              }),
+              const SizedBox(height: 100),
+            ],
+          ),
         ),
       ),
       floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
@@ -603,7 +693,7 @@ class _TicketPageState extends State<TicketPage> {
               style: TextStyle(
                 color: Color.fromARGB(255, 0, 0, 0),
                 fontSize: 18,
-                fontWeight: FontWeight.w100,
+                fontWeight: FontWeight.w300,
               ),
             ),
           ),
@@ -765,156 +855,169 @@ class EmailInputPage extends StatelessWidget {
         iconTheme: const IconThemeData(color: Colors.white),
       ),
       backgroundColor: const Color(0xFFE0F4FF),
-      body: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 注意点を示す欄
-            Container(
-              padding: const EdgeInsets.all(16.0),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFF0D4),
-                borderRadius: BorderRadius.circular(10.0),
-                border: Border.all(color: const Color(0xFFD4B96B), width: 1.5),
+      body: SingleChildScrollView(
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 注意点を示す欄
+              Container(
+                padding: const EdgeInsets.all(16.0),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFF0D4),
+                  borderRadius: BorderRadius.circular(10.0),
+                  border: Border.all(
+                    color: const Color(0xFFD4B96B),
+                    width: 1.5,
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: const [
+                    Text(
+                      '⚠︎ 注意',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: Color(0xFFD4B96B),
+                      ),
+                    ),
+                    SizedBox(height: 10),
+                    Text(
+                      'まだ予約は完了していません',
+                      style: TextStyle(
+                        fontSize: 20,
+                        color: Color.fromARGB(221, 255, 2, 2),
+                      ),
+                    ),
+                    SizedBox(height: 5),
+                    Text(
+                      '・ご入力いただいたメールアドレスに抽選結果をお知らせします。',
+                      style: TextStyle(fontSize: 14, color: Colors.black87),
+                    ),
+                    SizedBox(height: 5),
+                    Text(
+                      '・迷惑メール設定をされている方は、事前に「...」からのメールを受信できるように設定してください。',
+                      // TODO
+                      style: TextStyle(fontSize: 14, color: Colors.black87),
+                    ),
+                    SizedBox(height: 5),
+                    Text(
+                      '・複数のアドレスを使用しての応募は無効となります。',
+                      style: TextStyle(fontSize: 14, color: Colors.black87),
+                    ),
+                  ],
+                ),
               ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text(
-                    '⚠︎ 注意',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFFD4B96B),
+              const SizedBox(height: 20),
+              const Text(
+                '予約内容をメールで送信します。',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF6B8FD4),
+                ),
+              ),
+              const SizedBox(height: 20),
+              TextField(
+                controller: _emailController,
+                decoration: const InputDecoration(
+                  labelText: 'メールアドレス',
+                  border: OutlineInputBorder(),
+                  prefixIcon: Icon(Icons.email),
+                ),
+                keyboardType: TextInputType.emailAddress,
+              ),
+              const SizedBox(height: 30),
+              // プライバシーポリシーと免責事項のボタンを配置
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  TextButton(
+                    onPressed: () {
+                      UrlLauncherUtil.launch(
+                        url: 'https://tickets.kokosai.jp/privacy',
+                        context: context,
+                      );
+                      // プライバシーポリシーの表示処理
+                    },
+                    child: const Text(
+                      'プライバシーポリシー',
+                      style: TextStyle(color: Color(0xFF6B8FD4)),
                     ),
                   ),
-                  SizedBox(height: 10),
-                  Text(
-                    'まだ予約は完了していません',
-                    style: TextStyle(
-                      fontSize: 20,
-                      color: Color.fromARGB(221, 255, 2, 2),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 8.0),
+                    child: Text('|', style: TextStyle(color: Colors.grey)),
+                  ),
+                  TextButton(
+                    onPressed: () {
+                      UrlLauncherUtil.launch(
+                        url: 'https://tickets.kokosai.jp/disclaimer',
+                        context: context,
+                      );
+                      // 免責事項の表示処理
+                    },
+                    child: const Text(
+                      '免責事項',
+                      style: TextStyle(color: Color(0xFF6B8FD4)),
                     ),
-                  ),
-                  SizedBox(height: 5),
-                  Text(
-                    '・ご入力いただいたメールアドレスに抽選結果をお知らせします。',
-                    style: TextStyle(fontSize: 14, color: Colors.black87),
-                  ),
-                  SizedBox(height: 5),
-                  Text(
-                    '・迷惑メール設定をされている方は、事前に「...」からのメールを受信できるように設定してください。',
-                    style: TextStyle(fontSize: 14, color: Colors.black87),
-                  ),
-                  SizedBox(height: 5),
-                  Text(
-                    '・複数のアドレスを使用しての応募は無効となります。',
-                    style: TextStyle(fontSize: 14, color: Colors.black87),
                   ),
                 ],
               ),
-            ),
-            const SizedBox(height: 20),
-            const Text(
-              '予約内容をメールで送信します。',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-                color: Color(0xFF6B8FD4),
-              ),
-            ),
-            const SizedBox(height: 20),
-            TextField(
-              controller: _emailController,
-              decoration: const InputDecoration(
-                labelText: 'メールアドレス',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.email),
-              ),
-              keyboardType: TextInputType.emailAddress,
-            ),
-            const SizedBox(height: 30),
-            // プライバシーポリシーと免責事項のボタンを配置
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                TextButton(
-                  onPressed: () {
-                    // プライバシーポリシーの表示処理
+              const SizedBox(height: 40),
+              Center(
+                child: ElevatedButton(
+                  onPressed: () async {
+                    final email = _emailController.text;
+                    if (email.isNotEmpty && email.contains('@')) {
+                      await FirebaseFirestore.instance
+                          .collection("ticketsMail")
+                          .add({
+                            "to": [email],
+                            "message": {
+                              "subject": "鯱光祭チケット抽選予約完了のお知らせ",
+                              "text":
+                                  "旭丘高校鯱光祭三年劇の抽選予約誠にありがとうございます。結果につきましては再度9/25に送信いたします。また、万が一抽選に外れましても、一部当日席がありますので、ぜひお越しください。",
+                            },
+                          });
+                      // スナックバーの代わりに予約完了ページに遷移
+                      Navigator.pushAndRemoveUntil(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => const _BookingCompletePage(),
+                        ),
+                        (route) => route.isFirst,
+                      );
+                    } else {
+                      // メールアドレスが無効な場合の通知
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text('有効なメールアドレスを入力してください。'),
+                          duration: Duration(seconds: 2),
+                        ),
+                      );
+                    }
                   },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF6B8FD4),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(15.0),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 50,
+                      vertical: 15,
+                    ),
+                  ),
                   child: const Text(
-                    'プライバシーポリシー',
-                    style: TextStyle(color: Color(0xFF6B8FD4)),
+                    '予約を完了する',
+                    style: TextStyle(color: Colors.white, fontSize: 18),
                   ),
-                ),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 8.0),
-                  child: Text('|', style: TextStyle(color: Colors.grey)),
-                ),
-                TextButton(
-                  onPressed: () {
-                    // 免責事項の表示処理
-                  },
-                  child: const Text(
-                    '免責事項',
-                    style: TextStyle(color: Color(0xFF6B8FD4)),
-                  ),
-                ),
-              ],
-            ),
-            const Spacer(),
-            Center(
-              child: ElevatedButton(
-                onPressed: () async {
-                  final email = _emailController.text;
-                  if (email.isNotEmpty && email.contains('@')) {
-                    await FirebaseFirestore.instance.collection("ticketsMail").add({
-                      "to": [email],
-                      "message": {
-                        "subject": "鯱光祭チケット抽選予約完了のお知らせ",
-                        "text":
-                            "旭丘高校鯱光祭三年劇の抽選予約誠にありがとうございます。結果につきましては再度9/25に送信いたします。また、万が一抽選に外れましても、一部当日席がありますので、ぜひお越しください。",
-                      },
-                    });
-                    // 予約完了を通知
-                    final snackBarText =
-                        '$email宛に以下の演劇の予約内容を送信しました:\n${selectedPerformances.join('\n')}';
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text(snackBarText),
-                        duration: const Duration(seconds: 5),
-                      ),
-                    );
-                    // 予約完了後、メインページに戻る
-                    Navigator.popUntil(context, (route) => route.isFirst);
-                  } else {
-                    // メールアドレスが無効な場合の通知
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('有効なメールアドレスを入力してください。'),
-                        duration: Duration(seconds: 2),
-                      ),
-                    );
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF6B8FD4),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15.0),
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 50,
-                    vertical: 15,
-                  ),
-                ),
-                child: const Text(
-                  '予約を完了する',
-                  style: TextStyle(color: Colors.white, fontSize: 18),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -935,114 +1038,191 @@ class _PerformanceCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onSelected,
-      child: Container(
-        width: MediaQuery.of(context).size.width * 0.9,
-        margin: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
-        padding: const EdgeInsets.all(20),
-        decoration: BoxDecoration(
-          color:
-              isSelected
-                  ? const Color(0xFF6B8FD4).withOpacity(0.2)
-                  : Colors.white.withOpacity(0.9),
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.1),
-              offset: const Offset(5, 5),
-              blurRadius: 15,
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: 15, horizontal: 20),
+      child: GestureDetector(
+        onTap: onSelected,
+        child: Container(
+          width: MediaQuery.of(context).size.width * 0.9,
+          decoration: BoxDecoration(
+            color:
+                isSelected
+                    ? const Color(0xFF6B8FD4).withOpacity(0.2)
+                    : Colors.white.withOpacity(0.9),
+            borderRadius: BorderRadius.circular(20), // 外側のコンテナの角丸
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withOpacity(0.1),
+                offset: const Offset(5, 5),
+                blurRadius: 15,
+              ),
+            ],
+            border: Border.all(
+              color: isSelected ? const Color(0xFF6B8FD4) : Colors.transparent,
+              width: 2,
             ),
-          ],
-          border: Border.all(
-            color: isSelected ? const Color(0xFF6B8FD4) : Colors.transparent,
-            width: 2,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // 宣伝写真の代わりのプレースホルダー
+              AspectRatio(
+                aspectRatio: 16 / 9, // ここでアスペクト比を設定（例: 16:9）
+                child: Container(
+                  decoration: BoxDecoration(
+                    color: performance.photoColor,
+                    borderRadius: const BorderRadius.vertical(
+                      top: Radius.circular(18), // 上部の角丸を外側のコンテナに合わせる
+                    ),
+                  ),
+                  clipBehavior: Clip.antiAlias, // 角丸を適用するために追加
+                  child: Image.asset(
+                    "docs/assets/png/${performance.classnumber}${performance.extension}",
+                    fit: BoxFit.cover,
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 15,
+                ), // ここで内側の余白を少し追加
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      performance.title,
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.black.withOpacity(0.8),
+                      ),
+                    ),
+                    const SizedBox(height: 10),
+                    Text(
+                      'クラス: ${performance.classnumber}',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.black.withOpacity(0.6),
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      '上演場所: ${performance.venue}',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.black.withOpacity(0.6),
+                      ),
+                    ),
+                    const SizedBox(height: 5),
+                    Text(
+                      '上演時間: ${performance.time}',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.black.withOpacity(0.6),
+                      ),
+                    ),
+                    const SizedBox(height: 15),
+                    Text(
+                      performance.prText,
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.black.withOpacity(0.7),
+                      ),
+                    ),
+                    const SizedBox(height: 20),
+                    Center(
+                      child: ElevatedButton(
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor:
+                              isSelected
+                                  ? const Color(0xFF90D490)
+                                  : const Color(0xFF6B8FD4),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(15.0),
+                          ),
+                        ),
+                        onPressed: onSelected,
+                        child: Text(
+                          isSelected ? '選択済み' : '選択する',
+                          style: const TextStyle(color: Colors.white),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 宣伝写真の代わりのプレースホルダー
-            Container(
-              height: 150,
-              decoration: BoxDecoration(
-                color: performance.photoColor,
-                borderRadius: BorderRadius.circular(15),
+      ),
+    );
+  }
+}
+
+// 予約完了ページ
+class _BookingCompletePage extends StatelessWidget {
+  const _BookingCompletePage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      backgroundColor: const Color(0xFFE0F4FF),
+      body: Center(
+        child: Padding(
+          padding: const EdgeInsets.all(20.0),
+          child: Column(
+            mainAxisAlignment: MainAxisAlignment.center,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            children: [
+              const Icon(
+                Icons.check_circle_outline,
+                color: Color(0xFF90D490),
+                size: 100,
               ),
-              alignment: Alignment.center,
-              child: Image.asset(
-                performance.classnumber + performance.extension,
+              const SizedBox(height: 20),
+              const Text(
+                '予約が完了しました！',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF6B8FD4),
+                ),
+                textAlign: TextAlign.center,
               ),
-            ),
-            const SizedBox(height: 20),
-            Text(
-              performance.title,
-              style: TextStyle(
-                fontSize: 24,
-                fontWeight: FontWeight.bold,
-                color: Colors.black.withOpacity(0.8),
+              const SizedBox(height: 10),
+              const Text(
+                '抽選結果は、ご入力いただいたメールアドレスに9/25に送信されます。',
+                style: TextStyle(fontSize: 16, color: Colors.black54),
+                textAlign: TextAlign.center,
               ),
-            ),
-            const SizedBox(height: 10),
-            Text(
-              'クラス: ${performance.classnumber}',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.black.withOpacity(0.6),
-              ),
-            ),
-            const SizedBox(height: 5),
-            Text(
-              '上演場所: ${performance.venue}',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.black.withOpacity(0.6),
-              ),
-            ),
-            const SizedBox(height: 5),
-            Text(
-              '上演日: ${performance.date}',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.black.withOpacity(0.6),
-              ),
-            ),
-            const SizedBox(height: 5),
-            Text(
-              '上演時間: ${performance.time}',
-              style: TextStyle(
-                fontSize: 16,
-                color: Colors.black.withOpacity(0.6),
-              ),
-            ),
-            const SizedBox(height: 15),
-            Text(
-              performance.prText,
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.black.withOpacity(0.7),
-              ),
-            ),
-            const SizedBox(height: 20),
-            Center(
-              child: ElevatedButton(
+              const SizedBox(height: 40),
+              ElevatedButton(
+                onPressed: () {
+                  // メインページに戻る
+                  Navigator.pushAndRemoveUntil(
+                    context,
+                    MaterialPageRoute(builder: (context) => const MainPage()),
+                    (route) => false, // これまでのナビゲーション履歴をすべて破棄
+                  );
+                },
                 style: ElevatedButton.styleFrom(
-                  backgroundColor:
-                      isSelected
-                          ? const Color(0xFF90D490)
-                          : const Color(0xFF6B8FD4),
+                  backgroundColor: const Color(0xFF6B8FD4),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(15.0),
                   ),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 50,
+                    vertical: 15,
+                  ),
                 ),
-                onPressed: onSelected,
-                child: Text(
-                  isSelected ? '選択済み' : '選択する',
-                  style: const TextStyle(color: Colors.white),
+                child: const Text(
+                  'メインページに戻る',
+                  style: TextStyle(color: Colors.white, fontSize: 18),
                 ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -1059,36 +1239,12 @@ class _InitialContent extends StatefulWidget {
 }
 
 class __InitialContentState extends State<_InitialContent> {
-  bool _shouldAnimateIn = false;
-
-  @override
-  void initState() {
-    super.initState();
-    Future.delayed(const Duration(milliseconds: 500), () {
-      if (mounted) {
-        setState(() {
-          _shouldAnimateIn = true;
-        });
-      }
-    });
-  }
-
-  @override
-  void didUpdateWidget(_InitialContent oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.isVisible != widget.isVisible) {
-      setState(() {
-        _shouldAnimateIn = widget.isVisible;
-      });
-    }
-  }
-
   @override
   Widget build(BuildContext context) {
     return Stack(
       children: [
         _AnimatedItem(
-          isVisible: _shouldAnimateIn,
+          isVisible: widget.isVisible,
           duration: 1500,
           top: 20,
           right: -10,
@@ -1101,8 +1257,9 @@ class __InitialContentState extends State<_InitialContent> {
             ),
           ),
         ),
+
         _AnimatedItem(
-          isVisible: _shouldAnimateIn,
+          isVisible: widget.isVisible,
           duration: 1500,
           top: 80,
           right: -10,
@@ -1116,7 +1273,7 @@ class __InitialContentState extends State<_InitialContent> {
           ),
         ),
         _AnimatedItem(
-          isVisible: _shouldAnimateIn,
+          isVisible: widget.isVisible,
           duration: 1500,
           bottom: 100,
           right: 30,
@@ -1130,7 +1287,7 @@ class __InitialContentState extends State<_InitialContent> {
           ),
         ),
         _AnimatedItem(
-          isVisible: _shouldAnimateIn,
+          isVisible: widget.isVisible,
           duration: 800,
           top: 50,
           left: 50,
@@ -1144,7 +1301,7 @@ class __InitialContentState extends State<_InitialContent> {
           ),
         ),
         _AnimatedItem(
-          isVisible: _shouldAnimateIn,
+          isVisible: widget.isVisible,
           duration: 1500,
           bottom: 100,
           left: -50,
@@ -1158,7 +1315,7 @@ class __InitialContentState extends State<_InitialContent> {
           ),
         ),
         _AnimatedItem(
-          isVisible: _shouldAnimateIn,
+          isVisible: widget.isVisible,
           duration: 1800,
           top: 250,
           left: -150,
@@ -1179,7 +1336,7 @@ class __InitialContentState extends State<_InitialContent> {
           ),
         ),
         _AnimatedTextItem(
-          isVisible: _shouldAnimateIn,
+          isVisible: widget.isVisible,
           text: '鯱光祭',
           duration: 1500,
           top: 100,
@@ -1191,7 +1348,7 @@ class __InitialContentState extends State<_InitialContent> {
           ),
         ),
         _AnimatedTextItem(
-          isVisible: _shouldAnimateIn,
+          isVisible: widget.isVisible,
           text: '三年劇チケット',
           duration: 1500,
           top: 150,
@@ -1203,7 +1360,7 @@ class __InitialContentState extends State<_InitialContent> {
           ),
         ),
         _AnimatedTextItem(
-          isVisible: _shouldAnimateIn,
+          isVisible: widget.isVisible,
           text: '予約サイト',
           duration: 1500,
           top: 200,
@@ -1215,7 +1372,7 @@ class __InitialContentState extends State<_InitialContent> {
           ),
         ),
         _AnimatedTextItem(
-          isVisible: _shouldAnimateIn,
+          isVisible: widget.isVisible,
           text: 'Asahigaoka Highschool',
           duration: 1800,
           top: 250,
@@ -1223,7 +1380,7 @@ class __InitialContentState extends State<_InitialContent> {
           style: const TextStyle(fontSize: 15, color: Colors.black38),
         ),
         _AnimatedTextItem(
-          isVisible: _shouldAnimateIn,
+          isVisible: widget.isVisible,
           text: 'festival, KOKOSAI',
           duration: 1800,
           top: 270,
@@ -1231,7 +1388,7 @@ class __InitialContentState extends State<_InitialContent> {
           style: const TextStyle(fontSize: 15, color: Colors.black38),
         ),
         _AnimatedTextItem(
-          isVisible: _shouldAnimateIn,
+          isVisible: widget.isVisible,
           text: 'third grade theater',
           duration: 1800,
           top: 290,
@@ -1239,7 +1396,7 @@ class __InitialContentState extends State<_InitialContent> {
           style: const TextStyle(fontSize: 15, color: Colors.black38),
         ),
         _AnimatedTextItem(
-          isVisible: _shouldAnimateIn,
+          isVisible: widget.isVisible,
           text: 'ticket formal website',
           duration: 1800,
           top: 310,
@@ -1337,179 +1494,6 @@ class _AnimatedCardItem extends StatelessWidget {
         transform: Matrix4.translationValues(0, isVisible ? 0 : 50, 0),
         margin: const EdgeInsets.symmetric(vertical: 20),
         child: Center(child: child),
-      ),
-    );
-  }
-}
-
-// お問い合わせフォームページ
-class InquiryFormPage extends StatefulWidget {
-  const InquiryFormPage({super.key});
-
-  @override
-  _InquiryFormPageState createState() => _InquiryFormPageState();
-}
-
-class _InquiryFormPageState extends State<InquiryFormPage> {
-  final TextEditingController _emailController = TextEditingController();
-  final TextEditingController _contentController = TextEditingController();
-  final int _maxContentLength = 500;
-
-  @override
-  void dispose() {
-    _emailController.dispose();
-    _contentController.dispose();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('お問い合わせフォーム', style: TextStyle(color: Colors.white)),
-        backgroundColor: const Color(0xFF6B8FD4),
-        centerTitle: true,
-        iconTheme: const IconThemeData(color: Colors.white),
-      ),
-      backgroundColor: const Color(0xFFE0F4FF),
-      body: SingleChildScrollView(
-        padding: const EdgeInsets.all(20.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // 注意点を示す欄
-            Container(
-              padding: const EdgeInsets.all(16.0),
-              decoration: BoxDecoration(
-                color: const Color(0xFFFFF0D4),
-                borderRadius: BorderRadius.circular(10.0),
-                border: Border.all(color: const Color(0xFFD4B96B), width: 1.5),
-              ),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: const [
-                  Text(
-                    '⚠︎ 注意',
-                    style: TextStyle(
-                      fontSize: 16,
-                      fontWeight: FontWeight.bold,
-                      color: Color(0xFFD4B96B),
-                    ),
-                  ),
-                  SizedBox(height: 10),
-                  Text(
-                    '・お問い合わせ内容によっては返信にお時間をいただく場合がございます。',
-                    style: TextStyle(fontSize: 14, color: Colors.black87),
-                  ),
-                  SizedBox(height: 5),
-                  Text(
-                    '・返信が届かない場合は、迷惑メールフォルダをご確認ください。',
-                    style: TextStyle(fontSize: 14, color: Colors.black87),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 20),
-            // プライバシーポリシーと免責事項のボタン
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                TextButton(
-                  onPressed: () {
-                    // プライバシーポリシーの表示処理
-                  },
-                  child: const Text(
-                    'プライバシーポリシー',
-                    style: TextStyle(color: Color(0xFF6B8FD4)),
-                  ),
-                ),
-                const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 8.0),
-                  child: Text('|', style: TextStyle(color: Colors.grey)),
-                ),
-                TextButton(
-                  onPressed: () {
-                    // 免責事項の表示処理
-                  },
-                  child: const Text(
-                    '免責事項',
-                    style: TextStyle(color: Color(0xFF6B8FD4)),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 20),
-            // メールアドレス入力欄
-            TextField(
-              controller: _emailController,
-              decoration: const InputDecoration(
-                labelText: 'メールアドレス',
-                border: OutlineInputBorder(),
-                prefixIcon: Icon(Icons.email),
-              ),
-              keyboardType: TextInputType.emailAddress,
-            ),
-            const SizedBox(height: 20),
-            // お問い合わせ内容入力欄
-            TextField(
-              controller: _contentController,
-              maxLength: _maxContentLength,
-              maxLines: 10,
-              minLines: 5,
-              decoration: InputDecoration(
-                labelText: 'お問い合わせ内容',
-                hintText: 'お問い合わせ内容を500字以内でご記入ください。',
-                border: const OutlineInputBorder(),
-                counterText:
-                    '${_contentController.text.length} / $_maxContentLength',
-              ),
-            ),
-            const SizedBox(height: 30),
-            Center(
-              child: ElevatedButton(
-                onPressed: () async {
-                  final email = _emailController.text;
-                  final content = _contentController.text;
-                  if (email.isNotEmpty &&
-                      email.contains('@') &&
-                      content.isNotEmpty) {
-                    // 送信完了を通知
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: Text('お問い合わせ内容を送信しました。入力されたメールアドレス: $email'),
-                        duration: const Duration(seconds: 3),
-                      ),
-                    );
-                    // メインページに戻る
-                    Navigator.popUntil(context, (route) => route.isFirst);
-                  } else {
-                    // 入力内容が無効な場合の通知
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('有効なメールアドレスと内容を入力してください。'),
-                        duration: Duration(seconds: 2),
-                      ),
-                    );
-                  }
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF6B8FD4),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(15.0),
-                  ),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 50,
-                    vertical: 15,
-                  ),
-                ),
-                child: const Text(
-                  '送信する',
-                  style: TextStyle(color: Colors.white, fontSize: 18),
-                ),
-              ),
-            ),
-          ],
-        ),
       ),
     );
   }
