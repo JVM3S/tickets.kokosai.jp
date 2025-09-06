@@ -1114,7 +1114,7 @@ class _PerformanceCard extends StatelessWidget {
                   ),
                   clipBehavior: Clip.antiAlias, // 角丸を適用するために追加
                   child: Image.asset(
-                    "docs/assets/png/${performance.classnumber}${performance.extension}",
+                    "lib/assets/img/${performance.classnumber}${performance.extension}",
                     fit: BoxFit.cover,
                   ),
                 ),

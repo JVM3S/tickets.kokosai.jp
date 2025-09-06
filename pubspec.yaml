@@ -26,8 +26,19 @@ flutter:
   
   
   assets:
-     - docs/assets/png/
+     - lib/assets/img/
   fonts:
     - family: NotoSansJP
       fonts:
-        - asset: docs/assets/fonts/NotoSansJP-Regular.ttf   
+        - asset: lib/assets/fonts/NotoSansJP-Thin.otf
+          weight: 100
+        - asset: lib/assets/fonts/NotoSansJP-Light.otf
+          weight: 300
+        - asset: lib/assets/fonts/NotoSansJP-Regular.otf
+          weight: 400
+        - asset: lib/assets/fonts/NotoSansJP-Medium.otf
+          weight: 500
+        - asset: lib/assets/fonts/NotoSansJP-Bold.otf
+          weight: 700
+        - asset: lib/assets/fonts/NotoSansJP-Black.otf
+          weight: 900
