@@ -30,15 +30,15 @@ flutter:
   fonts:
     - family: NotoSansJP
       fonts:
-        - asset: lib/assets/fonts/NotoSansJP-Thin.otf
+        - asset: lib/assets/fonts/NotoSansJP/NotoSansJP-Thin.otf
           weight: 100
-        - asset: lib/assets/fonts/NotoSansJP-Light.otf
+        - asset: lib/assets/fonts/NotoSansJP/NotoSansJP-Light.otf
           weight: 300
-        - asset: lib/assets/fonts/NotoSansJP-Regular.otf
+        - asset: lib/assets/fonts/NotoSansJP/NotoSansJP-Regular.otf
           weight: 400
-        - asset: lib/assets/fonts/NotoSansJP-Medium.otf
+        - asset: lib/assets/fonts/NotoSansJP/NotoSansJP-Medium.otf
           weight: 500
-        - asset: lib/assets/fonts/NotoSansJP-Bold.otf
+        - asset: lib/assets/fonts/NotoSansJP/NotoSansJP-Bold.otf
           weight: 700
-        - asset: lib/assets/fonts/NotoSansJP-Black.otf
+        - asset: lib/assets/fonts/NotoSansJP/NotoSansJP-Black.otf
           weight: 900
